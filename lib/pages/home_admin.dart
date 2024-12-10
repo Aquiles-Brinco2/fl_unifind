@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:objetos_perdidos/pages/post_create_screen.dart';
+import 'package:objetos_perdidos/pages/post_storage.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
 import 'package:flutter/rendering.dart';
@@ -20,7 +22,7 @@ import 'package:objetos_perdidos/services/dashboard_lost_categories.dart';
 import 'package:objetos_perdidos/services/dashboard_lost_locations.dart';
 
 import 'package:flutter/foundation.dart'; // Para detección de la plataforma
-import 'dart:html' as html;
+import 'package:printing/printing.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -150,6 +152,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: Icon(Icons.list),
             label: 'Publicaciones',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add),
+            label: 'Publicar',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.archive),
+            label: 'Publicaciones Guardadas',
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -171,6 +181,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return const ProfileScreen(); // Pantalla de perfil
       case 3:
         return const PostsAdmin();
+      case 4:
+        return const CreatePublicationScreen();
+      case 5:
+        return const StoredPostsScreen();
       default:
         return _buildDashboardScreen();
     }
@@ -248,21 +262,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final pdfBytes = await pdf.save();
 
-      // Verificar si estamos en la web o en un dispositivo móvil
+      // Usar printing para compartir el PDF en web y móviles
       if (kIsWeb) {
-        // En la web, usamos el paquete html para descargar el PDF
-        final blob = html.Blob([Uint8List.fromList(pdfBytes)]);
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..target = 'blank'
-          ..download = 'dashboard.pdf'; // Nombre del archivo a descargar
-        anchor.click();
-        html.Url.revokeObjectUrl(url); // Limpiar la URL del objeto
+        // En la web, usamos printing para compartir el PDF
+        await Printing.sharePdf(bytes: pdfBytes, filename: 'dashboard.pdf');
       } else {
-        // En móvil, usamos path_provider y open_file para guardar y abrir el PDF
+        // En dispositivos móviles, guardamos el archivo temporalmente
         final tempDir = await getTemporaryDirectory();
         final pdfFile = File('${tempDir.path}/dashboard.pdf');
         await pdfFile.writeAsBytes(pdfBytes);
+
+        // Abrir el archivo PDF en el dispositivo
         OpenFile.open(pdfFile.path);
       }
     } catch (e) {
@@ -273,6 +283,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+// Método para construir las tablas (ejemplo genérico)
   pw.Table _buildTable(List<Map<String, dynamic>> data) {
     return pw.Table(
       border: pw.TableBorder.all(),

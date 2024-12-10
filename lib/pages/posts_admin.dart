@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
+import 'package:objetos_perdidos/pages/post_edit_screen.dart';
 
 import 'package:objetos_perdidos/services/comments_delete.dart';
 import 'package:objetos_perdidos/services/comments_get.dart';
@@ -363,17 +365,23 @@ class _PostCardState extends State<PostCard> {
                     style: const TextStyle(fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
-
                   const SizedBox(height: 12),
+
+                  // Botón para navegar a la pantalla de edición
                   ElevatedButton(
                     onPressed: () {
-                      showCompletePostBottomSheet(context, widget.post.id);
-                      print("print del id para completar${widget.post.id}");
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              EditPostScreen(post: widget.post),
+                        ),
+                      );
                     },
-                    child: const Text('Complete Post'),
+                    child: const Text('Editar Publicación'),
                   ),
 
-                  // Botón para eliminar el post
+                  // Botón para eliminar la publicación
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: _deletePost,
@@ -385,7 +393,7 @@ class _PostCardState extends State<PostCard> {
 
                   const SizedBox(height: 10),
 
-                  // Cargar y mostrar los comentarios con botón de eliminar
+                  // Comentarios con opción de eliminar
                   FutureBuilder<List<Comment>>(
                     future: futureComments,
                     builder: (context, snapshot) {
@@ -400,17 +408,19 @@ class _PostCardState extends State<PostCard> {
                       final comments = snapshot.data!;
                       return Column(
                         children: comments
-                            .map((comment) => ListTile(
-                                  title: Text(comment.content),
-                                  subtitle: Text(
-                                    'Publicado: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(comment.createdAt))}',
-                                  ),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.delete),
-                                    color: Colors.red,
-                                    onPressed: () => _deleteComment(comment.id),
-                                  ),
-                                ))
+                            .map(
+                              (comment) => ListTile(
+                                title: Text(comment.content),
+                                subtitle: Text(
+                                  'Publicado: ${DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(comment.createdAt))}',
+                                ),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  color: Colors.red,
+                                  onPressed: () => _deleteComment(comment.id),
+                                ),
+                              ),
+                            )
                             .toList(),
                       );
                     },

@@ -8,8 +8,8 @@ Future<void> updateLostItem({
   required String name,
   required String description,
   required String image,
-  required bool found,
-  required String status,
+  required bool found, // El estado de encontrado
+  required String status, // El estado del objeto ("Perdido" o "Encontrado")
   required String category,
   required String location,
   required String career,
@@ -20,6 +20,10 @@ Future<void> updateLostItem({
   final prefs = await SharedPreferences.getInstance();
   String? token = prefs.getString('token');
 
+  // Si no se proporciona un 'status', lo configuramos según el valor de 'found'
+  String updatedStatus =
+      status.isEmpty ? (found ? 'Encontrado' : 'Perdido') : status;
+
   final response = await http.put(
     url,
     headers: {
@@ -28,14 +32,21 @@ Future<void> updateLostItem({
       'ngrok-skip-browser-warning': 'true',
     },
     body: jsonEncode({
-      "name": name,
-      "description": description,
-      "image": image,
-      "found": found,
-      "status": status,
-      "category": category,
-      "location": location,
-      "career": career,
+      "name": name.isEmpty
+          ? ""
+          : name, // Si no se proporciona nombre, se envía vacío
+      "description":
+          description.isEmpty ? "" : description, // Lo mismo con la descripción
+      "image": image.isEmpty
+          ? ""
+          : image, // Si no se proporciona imagen, se envía vacío
+      "found": found, // Estado de encontrado
+      "status": updatedStatus, // Estado basado en 'found'
+      "category": category.isEmpty
+          ? ""
+          : category, // Si no se proporciona categoría, se envía vacío
+      "location": location.isEmpty ? "" : location, // Lo mismo con la ubicación
+      "career": career.isEmpty ? "" : career, // Lo mismo con la carrera
     }),
   );
 

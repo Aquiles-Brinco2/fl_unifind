@@ -6,6 +6,7 @@ import 'package:objetos_perdidos/pages/my_post_screen.dart';
 import 'package:objetos_perdidos/services/posts_update.dart';
 import 'package:objetos_perdidos/services/posts_delete.dart';
 import 'package:objetos_perdidos/services/main_class.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EditPostScreen extends StatefulWidget {
   final Post post;
@@ -25,6 +26,8 @@ class _EditPostScreenState extends State<EditPostScreen> {
   String? selectedCategory;
   String? selectedLocation;
   bool isLoading = false;
+  bool isAdmin = false; // Para verificar si el usuario es admin
+  bool? found; // Ahora se utiliza 'found' en lugar de 'isStored'
 
   final List<String> categories = [
     'Ropa',
@@ -47,6 +50,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
   void initState() {
     super.initState();
     _initializeFields();
+    _checkIfAdmin(); // Verificamos si el usuario es admin
   }
 
   void _initializeFields() {
@@ -55,7 +59,18 @@ class _EditPostScreenState extends State<EditPostScreen> {
     _careerController.text = widget.post.lostItem.career;
     selectedCategory = widget.post.lostItem.category;
     selectedLocation = widget.post.lostItem.location;
-    // Eliminamos la inicialización de selectedStatus ya que no queremos cambiar el estado
+    found =
+        widget.post.lostItem.found; // Asignamos el valor de 'found' al campo
+  }
+
+  // Verificar si el usuario es admin desde SharedPreferences
+  Future<void> _checkIfAdmin() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? role = prefs.getString(
+        'user_type'); // Suponiendo que el rol está guardado bajo 'role'
+    setState(() {
+      isAdmin = role == 'admin';
+    });
   }
 
   Future<void> _pickImage() async {
@@ -82,40 +97,56 @@ class _EditPostScreenState extends State<EditPostScreen> {
     final name = _nameController.text.trim();
     final description = _descriptionController.text.trim();
     final career = _careerController.text.trim();
-    // No necesitamos el `status` ya que no lo estamos modificando
 
-    if (name.isEmpty ||
-        description.isEmpty ||
-        career.isEmpty ||
-        selectedCategory == null ||
-        selectedLocation == null ||
-        base64Image == null) {
-      setState(() {
-        isLoading = false;
-      });
-      _showError('Por favor, completa todos los campos');
-      return;
-    }
+    // Usamos los valores actuales si los campos están vacíos
+    final updatedName = name.isEmpty ? widget.post.lostItem.name : name;
+    final updatedDescription =
+        description.isEmpty ? widget.post.lostItem.description : description;
+    final updatedCareer = career.isEmpty ? widget.post.lostItem.career : career;
+    final updatedCategory = selectedCategory ?? widget.post.lostItem.category;
+    final updatedLocation = selectedLocation ?? widget.post.lostItem.location;
+    final updatedFound = found ??
+        widget.post.lostItem.found; // Usar el valor de found actualizado
+    final updatedStatus = updatedFound
+        ? 'Encontrado'
+        : 'Perdido'; // Actualizar el valor de status
+
+    // Usamos la imagen actual si no se selecciona una nueva
+    final updatedImage = base64Image ?? widget.post.lostItem.image;
+
+    // Construir el payload dinámicamente con los valores actualizados
+    final Map<String, dynamic> payload = {
+      "name": updatedName,
+      "description": updatedDescription,
+      "image": updatedImage,
+      "found": updatedFound, // Aquí está 'found' que es un bool
+      "status": updatedStatus,
+      "category": updatedCategory,
+      "location": updatedLocation,
+      "career": updatedCareer,
+    };
+
+    // Imprimir el payload para verificar que 'found' tiene el valor correcto
+    print("Payload para la actualización: $payload");
 
     try {
+      // Llamar al servicio para actualizar el objeto
       await updateLostItem(
         lostItemId: widget.post.lostItem.id,
-        name: name,
-        description: description,
-        image: base64Image!,
-        found: widget.post.lostItem
-            .found, // Usamos el estado actual sin permitir cambios
-        status: widget.post.lostItem.found
-            ? 'Encontrado'
-            : 'Perdido', // El estado se mantiene igual
-        category: selectedCategory!,
-        location: selectedLocation!,
-        career: career,
+        name: updatedName,
+        description: updatedDescription,
+        image: updatedImage,
+        found: updatedFound,
+        status: updatedStatus,
+        category: updatedCategory,
+        location: updatedLocation,
+        career: updatedCareer,
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Objeto actualizado con éxito')),
       );
+      print(found);
       Navigator.pop(context);
     } catch (e) {
       _showError('Error al actualizar: $e');
@@ -256,6 +287,32 @@ class _EditPostScreenState extends State<EditPostScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              // Campo para "Almacenado", visible solo si es admin
+              if (isAdmin) const SizedBox(height: 16),
+              if (isAdmin)
+                DropdownButtonFormField<bool>(
+                  value: found, // Usamos 'found' en lugar de 'isStored'
+                  items: const [
+                    DropdownMenuItem(
+                      value: true,
+                      child: Text('Sí'),
+                    ),
+                    DropdownMenuItem(
+                      value: false,
+                      child: Text('No'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      found = value!;
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Almacenado',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _pickImage,
